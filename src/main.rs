@@ -1,30 +1,32 @@
-use consulrs::client::{ConsulClient, ConsulClientSettingsBuilder};
-use consulrs::error::ClientError;
-use consulrs::catalog::services;
-use consulrs::service::register;
-use consulrs::api::service::requests::RegisterServiceRequestBuilder;
+use tracing::{info, Level};
+use tracing_subscriber;
+
+mod consul;
+mod config;
 
 #[tokio::main]
-async fn main() -> Result<(), ClientError> {
-    let client = ConsulClient::new(
-        ConsulClientSettingsBuilder::default()
-            .address("http://192.168.10.42:8500")
-            .build()
-            .unwrap()
-    )?;
-    let services = services(&client, None).await?; 
-    for service in services.response {
-        println!("{:?}", service);
-    }
-    let response = register(&client, "test", 
-        Some(RegisterServiceRequestBuilder::default()
-            .name("test")
-            .address("127.0.0.1")
-            .port(8080_u64)
-            .kind("consulrs")
-            .tags(vec!["consulrs".to_string()]))
-        ).await?;
-    println!("{:?}", response);
+async fn main() -> Result<(), consul::ClientError> {
+    let collector = tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .finish();
+
+    tracing::subscriber::set_global_default(collector).expect("setting default subscriber failed");
+    let client = consul::Consul::new("http://192.168.10.42:8500");
+    //let services = client.get_catalog_services().await?;
+    //println!("{}", services);
+    let aservices = client.get_agent_services().await?;
+    info!("{:?}", aservices);
+    let new_service = consul::RegisterAgentService::new(
+        "nixconsul",
+        "consulrs",
+        8080,
+        "127.0.0.1",
+        vec!["nixconsul".to_string()],
+        Some(consul::ServiceCheck::new(
+            "localhost:8080",
+        ))
+    );
+    client.register_agent_service(&new_service).await?;
 
     Ok(())
 
