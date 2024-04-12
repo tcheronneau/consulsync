@@ -5,6 +5,8 @@ use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::fmt;
 
+use crate::config::ServiceConfig;
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Service {
     #[serde(flatten)]
@@ -89,6 +91,20 @@ impl RegisterAgentService {
         }
     }
 }
+impl From<ServiceConfig> for RegisterAgentService {
+    fn from(service: ServiceConfig) -> Self {
+        RegisterAgentService {
+            name: service.name,
+            kind: service.kind,
+            port: service.port,
+            address: service.address,
+            tags: service.tags,
+            meta: HashMap::new(),
+            enable_tag_override: true,
+            check: service.check,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct ClientError {
@@ -108,11 +124,17 @@ impl From<serde_json::Error> for ClientError {
         }
     }
 }
+impl std::fmt::Display for ClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+impl std::error::Error for ClientError {}
 
 #[derive(Debug)]
 pub struct Consul {
     client: Client,
-    base_url: String,
+    pub base_url: String,
 }
 impl Default for Consul {
     fn default() -> Self {

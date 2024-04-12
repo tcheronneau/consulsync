@@ -12,6 +12,8 @@ figment = { version = "0.10.16", features = ["toml", "env"] }
 reqwest = "0.12.3"
 serde = { version = "1.0.197", features = ["serde_derive"] }
 serde_json = "1.0.115"
+serde_yaml = "0.9.34"
 tokio = { version = "1.37.0", features = ["full"] }
+toml = "0.8.12"
 tracing = { version = "0.1.40", features = ["log"] }
 tracing-subscriber = "0.3.18"

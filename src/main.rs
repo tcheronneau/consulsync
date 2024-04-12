@@ -7,11 +7,17 @@ mod config;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let collector = tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
+        .with_max_level(Level::DEBUG)
         .finish();
 
     tracing::subscriber::set_global_default(collector).expect("setting default subscriber failed");
     let config = config::read("config.toml".into())?;
+    info!("Config is {:?}", config);
+    let client = consul::Consul::new(&config.consul.base_url);
+    for service in config.services {
+        let new_service: consul::RegisterAgentService = service.into();
+        client.register_agent_service(&new_service).await?;
+    }
     //let client = consul::Consul::new("http://192.168.10.42:8500");
     //let aservices = client.get_agent_services().await?;
     //info!("{:?}", aservices);
