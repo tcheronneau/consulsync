@@ -1,0 +1,8 @@
+consul = "http://192.168.10.42:8500"
+
+[[services]]
+name = "nixconsul"
+kind = "open"
+port = 8080
+address = "127.0.0.1"
+

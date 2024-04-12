@@ -109,6 +109,7 @@ impl From<serde_json::Error> for ClientError {
     }
 }
 
+#[derive(Debug)]
 pub struct Consul {
     client: Client,
     base_url: String,
