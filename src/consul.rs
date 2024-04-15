@@ -46,8 +46,31 @@ pub struct AgentService {
     pub enable_tag_override: bool,
     pub datacenter: String,
 }
+impl PartialEq<ServiceConfig> for AgentService {
+    fn eq(&self, other: &ServiceConfig) -> bool {
+        // Check that everything is the same
+        if self.id != other.name {
+            return false;
+        }
+        if self.port != other.port {
+            return false;
+        }
+        if self.address != other.address {
+            return false;
+        }
+        let mut tags = self.tags.clone();
+        tags.retain(|tag| tag != "nixconsul");
+        if tags != other.tags {
+            return false;
+        }
+        if self.kind != other.kind {
+            return false;
+        }
+        true
+    }
+}
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct ServiceCheck {
     #[serde(rename = "TCP")]
@@ -65,7 +88,7 @@ impl ServiceCheck {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct RegisterAgentService {
     pub kind: String,
@@ -131,22 +154,23 @@ impl std::fmt::Display for ClientError {
 }
 impl std::error::Error for ClientError {}
 
-#[derive(Debug)]
+#[derive(Debug,Serialize,Deserialize)]
 pub struct Consul {
+    #[serde(skip)]
     client: Client,
-    pub base_url: String,
+    pub url: String,
 }
 impl Default for Consul {
     fn default() -> Self {
-        Consul {
+        Self {
             client: Client::new(),
-            base_url: "http://localhost:8500".to_string(),
+            url: "http://localhost:8500".to_string(),
         }
     }
 }
 
 impl Consul {
-    pub fn new(base_url: &str) -> Self {
+    pub fn new(url: &str) -> Self {
         let mut headers = header::HeaderMap::new();
         headers.insert(header::CONTENT_TYPE, header::HeaderValue::from_static("application/json")); 
         let client = Client::builder()
@@ -154,13 +178,13 @@ impl Consul {
             .build()
             .unwrap();
         Consul {
-            client, 
-            base_url: base_url.to_string(),
+            client: client, 
+            url: url.to_string(),
         }
     }
 
     pub async fn get_catalog_services(&self) -> Result<Service, ClientError> {
-        let url = format!("{}/v1/catalog/services", self.base_url);
+        let url = format!("{}/v1/catalog/services", self.url);
         let response = self.client.get(&url).send().await?;
         let body = response.text().await?;
         debug!("Body from catalog service {:?}", &body);
@@ -168,7 +192,7 @@ impl Consul {
         Ok(services)
     }
     pub async fn get_agent_services(&self) -> Result<Vec<AgentService>, ClientError> {
-        let url = format!("{}/v1/agent/services", self.base_url);
+        let url = format!("{}/v1/agent/services", self.url);
         let response = self.client.get(&url).send().await?;
         let body = response.text().await?;
         debug!("Body from agent service {:?}", &body);
@@ -176,8 +200,10 @@ impl Consul {
         Ok(services.into_iter().map(|(_, v)| v).collect())
     }
     pub async fn register_agent_service(&self, service: &RegisterAgentService) -> Result<(), ClientError> {
-        let url = format!("{}/v1/agent/service/register", self.base_url);
-        let body = serde_json::to_string(service)?;
+        let url = format!("{}/v1/agent/service/register", self.url);
+        let mut service = service.clone();
+        service.tags.push("nixconsul".to_string());
+        let body = serde_json::to_string(&service)?;
         let response = self.client.put(&url).body(body).send().await?;
         debug!("Response from agent service registration {:?}", &response);
         let status = response.status();
@@ -193,7 +219,7 @@ impl Consul {
     }
 
     pub async fn deregister_agent_service(&self, service_id: &str) -> Result<(), ClientError> {
-        let url = format!("{}/v1/agent/service/deregister/{}", self.base_url, service_id);
+        let url = format!("{}/v1/agent/service/deregister/{}", self.url, service_id);
         let response = self.client.put(&url).send().await?;
         debug!("Response from agent service deregistration {:?}", &response);
         let status = response.status();
@@ -208,6 +234,20 @@ impl Consul {
         }
     }
 
-
+    pub async fn get_managed_services(&self) -> Result<Vec<AgentService>, ClientError> {
+        let services = self.get_agent_services().await;
+        match services {
+            Ok(services) => {
+                let managed_services: Vec<AgentService> = services.into_iter().filter(|service| {
+                    service.tags.contains(&"nixconsul".to_string())
+                }).collect();
+                Ok(managed_services)
+            },
+            Err(e) => {
+                warn!("Error getting managed services: {:?}", e);
+                Err(e)
+            }
+        }
+    }
 
 }

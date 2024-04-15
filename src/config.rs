@@ -6,11 +6,11 @@ use figment::providers::Env;
 use std::collections::HashMap;
 
 use crate::consul::{Consul, ServiceCheck};
+use crate::consul::AgentService;
 
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    #[serde(skip)]
     pub consul: Consul,
     pub services: Vec<ServiceConfig>,
 }
@@ -25,6 +25,29 @@ pub struct ServiceConfig {
     pub tags: Vec<String>,
     #[serde(default)]
     pub check: Option<ServiceCheck>,
+}
+impl PartialEq<AgentService> for ServiceConfig {
+    fn eq(&self, other: &AgentService) -> bool {
+        // Check that everything is the same
+        if self.name != other.id {
+            return false;
+        }
+        if self.port != other.port {
+            return false;
+        }
+        if self.address != other.address {
+            return false;
+        }
+        let mut tags = other.tags.clone();
+        tags.retain(|tag| tag != "nixconsul");
+        if self.tags != tags {
+            return false;
+        }
+        if self.kind != other.kind {
+            return false;
+        }
+        true
+    }
 }
 impl ServiceConfig {
     // Merge function to merge service type configuration into service configuration
@@ -70,7 +93,7 @@ pub fn read(config_file: PathBuf) -> anyhow::Result<Config> {
         .merge(Env::prefixed("NIXCONSUL_").split("_"))
         .extract()?;
 
-
+    debug!("Consul url {}", config.consul.url);
     for i in 0..config.services.len() {
         let service = &config.services[i];
         let service_type = &service.kind;
