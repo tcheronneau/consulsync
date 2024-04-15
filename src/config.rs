@@ -9,13 +9,13 @@ use crate::consul::{Consul, ServiceCheck};
 use crate::consul::AgentService;
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub consul: Consul,
     pub services: Vec<ServiceConfig>,
 }
 
-#[derive(Debug, Serialize,Deserialize)]
+#[derive(Debug, Serialize,Deserialize, Clone)]
 pub struct ServiceConfig {
     pub name: String,
     pub kind: String,

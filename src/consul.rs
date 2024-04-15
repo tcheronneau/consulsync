@@ -154,7 +154,7 @@ impl std::fmt::Display for ClientError {
 }
 impl std::error::Error for ClientError {}
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Debug,Serialize,Deserialize,Clone)]
 pub struct Consul {
     #[serde(skip)]
     client: Client,
