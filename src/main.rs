@@ -1,4 +1,4 @@
-use tracing::{info, Level};
+use tracing::{info, Level,debug,error};
 use tracing_subscriber;
 use std::sync::{mpsc,Arc, Mutex};
 use std::{time::Duration, thread};
@@ -40,19 +40,16 @@ fn watch_config_file(
     watcher.watch(Path::new(&file_path), RecursiveMode::Recursive).unwrap();
 
     loop {
+        debug!("watch_config_file waiting for event");
         match rx.recv() {
             Ok(event) => {
-                match event {
-                    EventKind::Modify(_) => {
-                        info!("Config file changed");
-                        sender.send(())?;
-                    }
-                    _ => {
-                        info!("Event {:?}", event);
-                    }
+                println!("watch event: {:?}", event);
+                if event?.kind.is_modify() {
+                    sender.send(())?;
                 }
+                debug!("watch_config_file done");
             },
-            Err(e) => eprintln!("watch error: {:?}", e),
+            Err(e) => error!("watch error: {:?}", e),
         }
     }
 }
@@ -71,18 +68,17 @@ async fn main() -> anyhow::Result<()> {
 
     thread::spawn(move || {
         if let Err(err) = watch_config_file(file_path.to_string(), tx) {
-            eprintln!("Error monitoring config file changes: {}", err);
+            error!("Error monitoring config file changes: {}", err);
         }
     });
 
-    check_services(config.clone()).await?;
     for _event in rx {
-        // Handle the change event, for now, let's just print a message
         println!("Config file changed, syncing...");
         thread::sleep(Duration::from_secs(1));
         let new_config = config::read(file_path.into())?;
         check_services(new_config).await?;
     }
+    debug!("main done");
+    Ok(())
 
-    loop {}
 }
