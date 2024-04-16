@@ -71,7 +71,8 @@ impl ServiceConfig {
                 self.address = value.as_str().unwrap().to_string();
             }
             "tags" => {
-                self.tags = value.as_sequence().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
+                let new_tags: Vec<String> = value.as_sequence().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
+                self.update_tags(new_tags);
             }
             "check" => {
                 let check = value.as_mapping().unwrap();
@@ -82,6 +83,38 @@ impl ServiceConfig {
                 panic!("Unknown field: {}", key);
             }
         }
+    }
+    fn update_tags(&mut self, tags: Vec<String>) {
+        let mut result_list: Vec<&str> = Vec::new();
+        for tag in &tags {
+            if let Some((key2, _)) = extract_key_value(tag.as_ref()) {
+                let mut found = false;
+                for strong_tag in &self.tags {
+                    if let Some((key1, _)) = extract_key_value(strong_tag) {
+                        if key1 == key2 {
+                            result_list.push(strong_tag);
+                            found = true;
+                            break;
+                        }
+                    } else {
+                        result_list.push(strong_tag);
+                    }
+                }
+                if !found {
+                    result_list.push(tag);
+                }
+            } else {
+                result_list.push(tag);
+            }
+        }
+        self.tags = result_list.iter().map(|s| s.to_string()).collect();
+    }
+}
+fn extract_key_value(input: &str) -> Option<(&str, &str)> {
+    let parts: Vec<&str> = input.trim().splitn(2, '=').collect();
+    match parts.as_slice() {
+        [key, value] => Some((key.trim(), value.trim())),
+        _ => None,
     }
 }
 

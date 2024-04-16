@@ -1,1 +1,1 @@
-tags = ["open"]
+tags = ["traefik.enable=false"]

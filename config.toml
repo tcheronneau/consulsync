@@ -6,6 +6,7 @@ name = "nixconsul"
 kind = "open"
 port = 8080
 address = "127.0.0.1"
+tags = ["traefik.enable=true", "notopen"]
 
 [[services]]
 name = "nixtest"
@@ -13,8 +14,8 @@ kind = "closed"
 port = 9090
 address = "127.0.0.1"
 
-[[services]]
-name = "nixtest2"
-kind = "closed"
-port = 9091
-address = "127.0.0.1"
+#[[services]]
+#name = "nixtest2"
+#kind = "closed"
+#port = 9091
+#address = "127.0.0.1"

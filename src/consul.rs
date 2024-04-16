@@ -178,12 +178,12 @@ impl Consul {
             .build()
             .unwrap();
         Consul {
-            client: client, 
+            client, 
             url: url.to_string(),
         }
     }
 
-    pub async fn get_catalog_services(&self) -> Result<Service, ClientError> {
+    pub async fn _get_catalog_services(&self) -> Result<Service, ClientError> {
         let url = format!("{}/v1/catalog/services", self.url);
         let response = self.client.get(&url).send().await?;
         let body = response.text().await?;
