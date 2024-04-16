@@ -1,17 +1,17 @@
 [consul]
-url = "http://192.168.10.42:8500"
+url = "http://localhost:8500"
 
 [[services]]
 name = "nixconsul"
 kind = "open"
 port = 8080
 address = "127.0.0.1"
-#
-#[[services]]
-#name = "nixtest"
-#kind = "closed"
-#port = 9090
-#address = "127.0.0.1"
+
+[[services]]
+name = "nixtest"
+kind = "closed"
+port = 9090
+address = "127.0.0.1"
 
 [[services]]
 name = "nixtest2"
