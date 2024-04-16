@@ -2,11 +2,14 @@ use tracing::{info, Level,debug,error};
 use tracing_subscriber;
 use std::sync::{mpsc,Arc, Mutex};
 use std::{time::Duration, thread};
-use notify::{RecommendedWatcher, RecursiveMode, Watcher, Config as NotifyConfig, EventKind};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher, Config as NotifyConfig, EventKind, Event, Error};
 use std::path::Path;
+use tokio::task;
 
 mod consul;
 mod config;
+
+const CONFIG_PATH: &str = "config.toml";
 
 async fn check_services(config: config::Config) -> anyhow::Result<()> {
     let client = consul::Consul::new(&config.consul.url);
@@ -31,29 +34,6 @@ async fn check_services(config: config::Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn watch_config_file(
-    file_path: String,
-    sender: mpsc::Sender<()>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let (tx, rx) = mpsc::channel();
-    let mut watcher = RecommendedWatcher::new(tx, NotifyConfig::default()).unwrap();
-    watcher.watch(Path::new(&file_path), RecursiveMode::Recursive).unwrap();
-
-    loop {
-        debug!("watch_config_file waiting for event");
-        match rx.recv() {
-            Ok(event) => {
-                println!("watch event: {:?}", event);
-                if event?.kind.is_modify() {
-                    sender.send(())?;
-                }
-                debug!("watch_config_file done");
-            },
-            Err(e) => error!("watch error: {:?}", e),
-        }
-    }
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let collector = tracing_subscriber::fmt()
@@ -61,24 +41,37 @@ async fn main() -> anyhow::Result<()> {
         .finish();
     tracing::subscriber::set_global_default(collector).expect("setting default subscriber failed");
 
-    let file_path = "config.toml";
-    let config = config::read(file_path.into())?;
+    let config = config::read(CONFIG_PATH.into())?;
     info!("Config is {:?}", config);
-    let (tx, rx) = mpsc::channel();
+    let config = Arc::new(Mutex::new(config));
+    let cloned_config = Arc::clone(&config);
 
-    thread::spawn(move || {
-        if let Err(err) = watch_config_file(file_path.to_string(), tx) {
-            error!("Error monitoring config file changes: {}", err);
-        }
-    });
+    let mut watcher =
+        // To make sure that the config lives as long as the function
+        // we need to move the ownership of the config inside the function
+        // To learn more about move please read [Using move Closures with Threads](https://doc.rust-lang.org/book/ch16-01-threads.html?highlight=move#using-move-closures-with-threads)
+        RecommendedWatcher::new(move |result: Result<Event, Error>| {
+            let event = result.unwrap();
 
-    for _event in rx {
-        println!("Config file changed, syncing...");
-        thread::sleep(Duration::from_secs(1));
-        let new_config = config::read(file_path.into())?;
-        check_services(new_config).await?;
-    }
-    debug!("main done");
-    Ok(())
+            if event.kind.is_modify() {
+                match config::read(CONFIG_PATH.into()) {
+                    Ok(new_config) => { 
+                        *cloned_config.lock().unwrap() = new_config;
+                        futures::executor::block_on( async {
+                            check_services(cloned_config
+                                .lock()
+                                .unwrap()
+                                .clone())
+                            .await
+                            .unwrap();
+                        });
+                    },
+                    Err(error) => println!("Error reloading config: {:?}", error),
+                }
+            }
+        },notify::Config::default())?;
+
+    watcher.watch(Path::new(CONFIG_PATH), RecursiveMode::Recursive)?;
+    loop {}
 
 }
