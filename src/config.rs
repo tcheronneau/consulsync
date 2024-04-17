@@ -94,7 +94,6 @@ impl ServiceConfig {
                         if key1 == key2 {
                             result_list.push(strong_tag);
                             found = true;
-                            break;
                         }
                     } else {
                         result_list.push(strong_tag);
