@@ -1,0 +1,15 @@
+tags = [
+        "traefik.enable=true", 
+        "traefik.http.routers.SERVICE_NAME.entrypoints=web,websecure", 
+        "traefik.http.middlewares.authelia.forwardauth.address=https://auth.mcth.fr/api/verify?rd=https://auth.mcth.fr", 
+        "traefik.http.routers.SERVICE_NAME.middlewares=https-redirect,website", 
+        "traefik.http.middlewares.secured.chain.middlewares=https-redirect,authelia", 
+        "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https", 
+        "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true", 
+        "traefik.http.routers.SERVICE_NAME.tls=true", 
+        "traefik.http.routers.SERVICE_NAME.tls.certresolver=default", 
+        "traefik.http.routers.SERVICE_NAME.tls.domains[0].main=mcth.fr", 
+        "traefik.http.routers.SERVICE_NAME.tls.domains[0].sans=*.mcth.fr", 
+        "traefik.http.middlewares.website.headers.customrequestheaders.Host=website.garage.mcth.fr" 
+]
+

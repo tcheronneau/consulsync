@@ -98,10 +98,10 @@ pub struct RegisterAgentService {
     pub port: u16,
     pub address: String,
     pub enable_tag_override: bool,
-    pub check: Option<ServiceCheck>,
+    pub check: ServiceCheck,
 }
 impl RegisterAgentService {
-    pub fn new(name: &str, kind: &str, port: u16, address: &str, tags: Vec<String>, check: Option<ServiceCheck>) -> Self {
+    pub fn _new(name: &str, kind: &str, port: u16, address: &str, tags: Vec<String>) -> Self {
         RegisterAgentService {
             name: name.to_string(),
             kind: kind.to_string(),
@@ -110,7 +110,7 @@ impl RegisterAgentService {
             tags,
             meta: HashMap::new(),
             enable_tag_override: true,
-            check,
+            check: ServiceCheck::new(&format!("{}:{}", address, port)),
         }
     }
 }
@@ -120,11 +120,11 @@ impl From<ServiceConfig> for RegisterAgentService {
             name: service.name,
             kind: service.kind,
             port: service.port,
-            address: service.address,
+            address: service.address.clone(),
             tags: service.tags,
             meta: HashMap::new(),
             enable_tag_override: true,
-            check: service.check,
+            check: ServiceCheck::new(&format!("{}:{}", &service.address, &service.port)),
         }
     }
 }

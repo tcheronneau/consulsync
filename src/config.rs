@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use figment::providers::Env;
 use std::collections::HashMap;
 
-use crate::consul::{Consul, ServiceCheck};
+use crate::consul::{Consul};
 use crate::consul::AgentService;
 
 
@@ -13,6 +13,7 @@ use crate::consul::AgentService;
 pub struct Config {
     pub consul: Consul,
     pub services: Vec<ServiceConfig>,
+    pub log_level: Option<String>,
 }
 
 #[derive(Debug, Serialize,Deserialize, Clone)]
@@ -23,8 +24,17 @@ pub struct ServiceConfig {
     pub address: String,
     #[serde(default)]
     pub tags: Vec<String>,
-    #[serde(default)]
-    pub check: Option<ServiceCheck>,
+}
+impl Default for ServiceConfig {
+    fn default() -> Self {
+        ServiceConfig {
+            name: "".to_string(),
+            kind: "".to_string(),
+            port: 0,
+            address: "".to_string(),
+            tags: Vec::new(),
+        }
+    }
 }
 impl PartialEq<AgentService> for ServiceConfig {
     fn eq(&self, other: &AgentService) -> bool {
@@ -74,11 +84,6 @@ impl ServiceConfig {
                 let new_tags: Vec<String> = value.as_sequence().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
                 self.update_tags(new_tags);
             }
-            "check" => {
-                let check = value.as_mapping().unwrap();
-                let tcp = check.get(&serde_yaml::Value::String("tcp".to_string())).unwrap().as_str().unwrap();
-                self.check = Some(ServiceCheck::new(tcp));
-            }
             _ => {
                 panic!("Unknown field: {}", key);
             }
@@ -87,14 +92,14 @@ impl ServiceConfig {
     fn update_tags(&mut self, tags: Vec<String>) {
         let mut result_list: Vec<&str> = Vec::new();
         for tag in &tags {
-            if let Some((key2, _)) = extract_key_value(tag.as_ref()) {
+            if let Some((key2, _)) = extract_key_value(&replace_service_name(&tag, &self.name)) {
                 let mut found = false;
                 for strong_tag in &self.tags {
-                    if let Some((key1, _)) = extract_key_value(strong_tag) {
+                    if let Some((key1, _)) = extract_key_value(&replace_service_name(&strong_tag, &self.name)) {
                         if key1 == key2 {
-                            result_list.push(strong_tag);
                             found = true;
-                        }
+                        } 
+                        result_list.push(strong_tag);
                     } else {
                         result_list.push(strong_tag);
                     }
@@ -108,6 +113,9 @@ impl ServiceConfig {
         }
         self.tags = result_list.iter().map(|s| s.to_string()).collect();
     }
+}
+fn replace_service_name(input: &str, service_name: &str) -> String {
+    input.replace("SERVICE_NAME", service_name)
 }
 fn extract_key_value(input: &str) -> Option<(&str, &str)> {
     let parts: Vec<&str> = input.trim().splitn(2, '=').collect();
