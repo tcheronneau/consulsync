@@ -17,7 +17,7 @@
         src = lib.cleanSource ./.;
 
         cargoSha256 =
-          "sha256-Kyrqm1WeygIyFvLMXhvaLGE8E2ef/ZW+676q00QO8zs=";
+          "sha256-E1+9gEB0KIy8iD9zGtLQkgSu364P93gSNWSXkMRRgfI=";
         nativeBuildInputs = [
           rustc
           cargo
@@ -82,6 +82,7 @@
                     description = "Log level";
                   };
                   consul = mkOption {
+                    default = {};
                     type = types.submodule {
                       freeformType = format.type;
                       options = {
