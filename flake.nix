@@ -143,10 +143,9 @@
                   group = "consulsync";
                   isSystemUser = true;
               };
-              users.groups.consulsync = {};
-            };
+            users.groups.consulsync = {};
             meta.maintainers = with maintainers; [ tcheronneau ];
           };
-        };
-      });
+      };
+  });
 }
