@@ -67,7 +67,7 @@
             };
             package = mkOption {
               type = types.package;
-              default = self.packages.consulsync;
+              default = self.packages.${system}.consulsync;
               description = "Consulsync package";
             };
             settings = mkOption {
