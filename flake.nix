@@ -77,7 +77,7 @@
 
                 options = {
                   log_level = mkOption {
-                    type = types.string;
+                    type = types.str;
                     default = "info";
                     description = "Log level";
                   };
@@ -87,7 +87,7 @@
                       freeformType = format.type;
                       options = {
                         url = mkOption {
-                          type = types.string;
+                          type = types.str;
                           default = "http://localhost:8500";
                           description = "Consul address";
                         };
@@ -100,15 +100,15 @@
                       freeformType = format.type;
                       options = {
                         name = mkOption {
-                          type = types.string;
+                          type = types.str;
                           description = "Service name";
                         };
                         kind = mkOption {
-                          type = types.string;
+                          type = types.str;
                           description = "Service kind";
                         };
                         address = mkOption {
-                          type = types.string;
+                          type = types.str;
                           description = "Service address";
                         };
                         port = mkOption {
@@ -116,7 +116,7 @@
                           description = "Service port";
                         };
                         tags = mkOption {
-                          type = types.listOf types.string;
+                          type = types.listOf types.str;
                           description = "Service tags";
                         };
                       };
@@ -135,7 +135,7 @@
                 User = "consulsync";
                 Group = "consulsync";
                 Type = "simple";
-                ExecStart = "${getExe cfg.package} -c ${configFile}";
+                ExecStart = "${getExe' cfg.package "consulsync"} -c ${configFile}";
                 ExecReload = "${pkgs.coreutils}/bin/kill -SIGHUP $MAINPID";
                 KillSignal = "SIGINT";
                 TimeoutStopSec = "30s";
