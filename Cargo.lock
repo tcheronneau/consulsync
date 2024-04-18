@@ -238,29 +238,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
-name = "consul"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "clap-verbosity-flag",
- "consulrs",
- "env_logger",
- "figment",
- "futures",
- "log",
- "notify",
- "reqwest 0.12.3",
- "serde",
- "serde_json",
- "serde_yaml",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "consulrs"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -292,6 +269,29 @@ dependencies = [
  "quote",
  "syn 1.0.109",
  "synstructure",
+]
+
+[[package]]
+name = "consulsync"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "clap-verbosity-flag",
+ "consulrs",
+ "env_logger",
+ "figment",
+ "futures",
+ "log",
+ "notify",
+ "reqwest 0.12.3",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
