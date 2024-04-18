@@ -60,9 +60,9 @@
           configFile = format.generate "config.toml" cfg.settings; 
         in {
           options.services.consulsync = {
-            enable = lib.mkOption {
+            enable = mkOption {
               default = false;
-              type = lib.types.bool;
+              type = types.bool;
               description = "Enable consul sync";
             };
             package = mkOption {
@@ -71,8 +71,10 @@
               description = "Consulsync package";
             };
             settings = mkOption {
+              default = {};
               type = types.submodule {
                 freeformType = format.type;
+
                 options = {
                   log_level = mkOption {
                     type = types.string;
