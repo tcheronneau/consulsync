@@ -83,6 +83,7 @@ impl ServiceConfig {
             "tags" => {
                 let new_tags: Vec<String> = value.as_sequence().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
                 self.update_tags(new_tags);
+                self.replace_service_name();
             }
             _ => {
                 panic!("Unknown field: {}", key);
@@ -91,11 +92,12 @@ impl ServiceConfig {
     }
     fn update_tags(&mut self, tags: Vec<String>) {
         let mut result_list: Vec<&str> = Vec::new();
+        info!("Checking tags {:?}",tags);
         for tag in &tags {
-            if let Some((key2, _)) = extract_key_value(&replace_service_name(&tag, &self.name)) {
+            if let Some((key2, _)) = extract_key_value(&tag) {
                 let mut found = false;
                 for strong_tag in &self.tags {
-                    if let Some((key1, _)) = extract_key_value(&replace_service_name(&strong_tag, &self.name)) {
+                    if let Some((key1, _)) = extract_key_value(&strong_tag) {
                         if key1 == key2 {
                             found = true;
                         } 
@@ -111,11 +113,12 @@ impl ServiceConfig {
                 result_list.push(tag);
             }
         }
+        info!("Result list {:?}",result_list);
         self.tags = result_list.iter().map(|s| s.to_string()).collect();
     }
-}
-fn replace_service_name(input: &str, service_name: &str) -> String {
-    input.replace("SERVICE_NAME", service_name)
+    fn replace_service_name(&mut self) {
+        self.tags = self.tags.iter().map(|tag| tag.replace("SERVICE_NAME", &self.name)).collect();
+    }
 }
 fn extract_key_value(input: &str) -> Option<(&str, &str)> {
     let parts: Vec<&str> = input.trim().splitn(2, '=').collect();
@@ -138,7 +141,7 @@ pub fn read(config_file: PathBuf) -> anyhow::Result<Config> {
         let service = &config.services[i];
         let service_type = &service.kind;
         let service_type_config_file = format!("config_{}.toml", service_type);
-        debug!("Service type is {:?}", service_type_config_file);
+        info!("Service type is {:?}", service_type_config_file);
         let service_type_config: HashMap<String, serde_yaml::Value> = Figment::new()
             .merge(Toml::file(service_type_config_file))
             .extract()?;

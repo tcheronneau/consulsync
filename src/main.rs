@@ -75,7 +75,7 @@ async fn main() -> anyhow::Result<()> {
         .with_max_level(log_level.parse::<Level>().unwrap_or(Level::INFO))
         .finish();
     tracing::subscriber::set_global_default(collector).expect("setting default subscriber failed");
-    debug!("Config is {:?}", config);
+    info!("Config is {:?}", config);
 
     let (tx, rx) = mpsc::channel();
     check_services(config.clone()).await?;

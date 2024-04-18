@@ -1,20 +1,27 @@
 log_level = "info"
 
 [consul]
-url = "http://127.0.0.1:8500"
+url = "http://192.168.10.42:8500"
 
 [[services]]
 name = "nixconsul"
-kind = "open"
+kind = "traefik_authelia"
 port = 8080
 address = "127.0.0.1"
-tags = ["traefik.enable=true", "traefik.http.routers.website_garage.rule=Host(`mcth.fr`)", "traefik.http.routers.website_garage.entrypoints=web,websecure", "traefik.http.middlewares.authelia.forwardauth.address=https://auth.mcth.fr/api/verify?rd=https://auth.mcth.fr", "traefik.http.routers.website_garage.middlewares=https-redirect,website", "traefik.http.middlewares.secured.chain.middlewares=https-redirect,authelia", "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https", "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true", "traefik.http.routers.website_garage.tls=true", "traefik.http.routers.website_garage.tls.certresolver=default", "traefik.http.routers.website_garage.tls.domains[0].main=mcth.fr", "traefik.http.routers.website_garage.tls.domains[0].sans=*.mcth.fr", "traefik.http.middlewares.website.headers.customrequestheaders.Host=website.garage.mcth.fr" ]
+#tags = []
+#
+[[services]]
+name = "nixtest"
+kind = "closed"
+port = 9090
+address = "127.0.0.1"
 
 #[[services]]
-#name = "nixtest"
-#kind = "closed"
-#port = 9090
-#address = "127.0.0.1"
+#name = "forgejo"
+#kind = "traefik_authelia"
+#port = 3000
+#address = "192.168.10.8"
+#tags = ["traefik.http.routers.forgejo.rule=Host(`forgejo.mcth.fr`)"]
 
 #[[services]]
 #name = "nixtest2"
