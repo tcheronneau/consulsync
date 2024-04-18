@@ -52,7 +52,7 @@
           openssl.dev
         ];
       };
-      nixosModule.consulsync = { config, lib, pkgs, ...}:
+      nixosModules.consulsync = { config, lib, pkgs, ...}:
         with lib;
         let 
           cfg = config.services.consulsync;
