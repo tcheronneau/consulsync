@@ -16,6 +16,10 @@ kind = "closed"
 port = 9090
 address = "127.0.0.1"
 
+[[service_kinds]]
+name = "traefik_authelia"
+filename = "./config_traefik_authelia.toml"
+
 #[[services]]
 #name = "forgejo"
 #kind = "traefik_authelia"

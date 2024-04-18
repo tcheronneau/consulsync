@@ -5,15 +5,22 @@ use std::path::PathBuf;
 use figment::providers::Env;
 use std::collections::HashMap;
 
-use crate::consul::{Consul};
+use crate::consul::Consul;
 use crate::consul::AgentService;
 
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub consul: Consul,
-    pub services: Vec<ServiceConfig>,
     pub log_level: Option<String>,
+    pub services: Vec<ServiceConfig>,
+    pub service_kinds: Vec<KindConfig>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct KindConfig {
+    pub name: String,
+    pub filename: String,
 }
 
 #[derive(Debug, Serialize,Deserialize, Clone)]
@@ -128,6 +135,16 @@ fn extract_key_value(input: &str) -> Option<(&str, &str)> {
     }
 }
 
+impl Config {
+    fn get_kind_file(&self, kind: &str) -> String { 
+        let kind_config = match self.service_kinds.iter().find(|k| k.name == kind) {
+            Some(kind_config) => kind_config.filename.clone(),
+            None => "".to_string(),
+        };
+        kind_config
+    }
+}
+
 pub fn read(config_file: &PathBuf) -> anyhow::Result<Config> {
     info!("Reading config file {config_file:?}");
 
@@ -140,7 +157,8 @@ pub fn read(config_file: &PathBuf) -> anyhow::Result<Config> {
     for i in 0..config.services.len() {
         let service = &config.services[i];
         let service_type = &service.kind;
-        let service_type_config_file = format!("config_{}.toml", service_type);
+        //let service_type_config_file = format!("config_{}.toml", service_type);
+        let service_type_config_file = config.get_kind_file(service_type); 
         info!("Service type is {:?}", service_type_config_file);
         let service_type_config: HashMap<String, serde_yaml::Value> = Figment::new()
             .merge(Toml::file(service_type_config_file))
