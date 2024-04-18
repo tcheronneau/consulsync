@@ -3,12 +3,20 @@ use tracing_subscriber;
 use std::sync::mpsc;
 use std::{time::Duration, thread};
 use notify::{PollWatcher, RecursiveMode, Watcher, Config as NotifyConfig};
+use clap::{arg, command, Parser};
+use std::path::PathBuf;
 
 mod consul;
 mod config;
 
-const CONFIG_FILE: &str = "config.toml";
+//const CONFIG_FILE: &str = "config.toml";
 
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(short, long)]
+    config: PathBuf,
+}
 
 async fn check_services(config: config::Config) -> anyhow::Result<()> {
     let client = consul::Consul::new(&config.consul.url);
@@ -33,7 +41,7 @@ async fn check_services(config: config::Config) -> anyhow::Result<()> {
 }
 
 fn watch_config_file(
-    file_path: &str,
+    file_path: &std::path::Path,
     sender: mpsc::Sender<()>,
 ) -> anyhow::Result<()> {
     let (file_tx, file_rx) = mpsc::channel();
@@ -59,8 +67,11 @@ fn watch_config_file(
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
 
-    let config = match config::read(CONFIG_FILE.into()) {
+    let config_file = args.config;
+    let config_file_clone = config_file.clone();
+    let config = match config::read(&config_file) {
         Ok(config) => config,
         Err(e) => {
             error!("Error reading config file: {}", e);
@@ -80,7 +91,7 @@ async fn main() -> anyhow::Result<()> {
     let (tx, rx) = mpsc::channel();
     check_services(config.clone()).await?;
     thread::spawn(move || {
-        if let Err(err) = watch_config_file(CONFIG_FILE, tx) {
+        if let Err(err) = watch_config_file(&config_file_clone, tx) {
             error!("Error monitoring config file changes: {}", err);
         }
     });
@@ -90,7 +101,7 @@ async fn main() -> anyhow::Result<()> {
             Ok(_) => {
                 debug!("Config file changed, syncing...");
                 thread::sleep(Duration::from_secs(1));
-                let new_config = match config::read(CONFIG_FILE.into()) {
+                let new_config = match config::read(&config_file) {
                     Ok(config) => config,
                     Err(e) => {
                         error!("Error reading config file: {}", e);

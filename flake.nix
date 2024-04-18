@@ -30,12 +30,12 @@
       };
       packages.docker = dockerTools.buildLayeredImage {
         name = "mcth/${name}";
-        contents = [ self.packages.${system}.consul  cacert ];
+        contents = [ self.packages.${system}.consulsync  cacert ];
         tag = "${system}-${version}";
         created = "now";
         config = {
           Cmd = [
-            "${self.packages.${system}.consul}/bin/${name}"
+            "${self.packages.${system}.consulsync}/bin/${name}"
           ];
         };
       };
@@ -57,7 +57,7 @@
         let 
           cfg = config.services.consulsync;
           format = pkgs.formats.toml { };
-          config_file = format.generate "config.toml" cfg.settings; 
+          configFile = format.generate "config.toml" cfg.settings; 
         in {
           options.services.consulsync = {
             enable = lib.mkOption {
@@ -132,7 +132,7 @@
                 User = "consulsync";
                 Group = "consulsync";
                 Type = "simple";
-                ExecStart = "${getExe cfg.package} -d -c ${configFile}";
+                ExecStart = "${getExe cfg.package} -c ${configFile}";
                 ExecReload = "${pkgs.coreutils}/bin/kill -SIGHUP $MAINPID";
                 KillSignal = "SIGINT";
                 TimeoutStopSec = "30s";

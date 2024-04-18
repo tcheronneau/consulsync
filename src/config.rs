@@ -128,7 +128,7 @@ fn extract_key_value(input: &str) -> Option<(&str, &str)> {
     }
 }
 
-pub fn read(config_file: PathBuf) -> anyhow::Result<Config> {
+pub fn read(config_file: &PathBuf) -> anyhow::Result<Config> {
     info!("Reading config file {config_file:?}");
 
     let mut config: Config = Figment::new()
