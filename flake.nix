@@ -95,7 +95,6 @@
                   };
                   service_kinds = mkOption {
                     type = types.listOf (types.submodule {
-                      default = [];
                       freeformType = format.type;
                       options = {
                         name = mkOption {
@@ -111,7 +110,6 @@
                   };
                   kinds = mkOption {
                     type = types.listOf (types.submodule {
-                      default = [];
                       freeformType = format.type;
                       options = {
                         name = mkOption {
@@ -127,7 +125,6 @@
                   };
                   services = mkOption {
                     type = types.listOf (types.submodule {
-                      default = [];
                       freeformType = format.type;
                       options = {
                         name = mkOption {
