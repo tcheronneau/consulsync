@@ -58,10 +58,6 @@
           cfg = config.services.consulsync;
           format = pkgs.formats.toml { };
           configFile = format.generate "config.toml" cfg.settings; 
-          kindFiles = mapAttrsToList (name: kind: ''
-              pkgs.writeText "${name}.toml" kind.content;
-            ''
-          ) cfg.kinds;
         in {
           options.services.consulsync = {
             enable = mkOption {
@@ -91,7 +87,6 @@
               });
             };
             settings = mkOption {
-              default = {};
               type = types.submodule {
                 freeformType = format.type;
 
