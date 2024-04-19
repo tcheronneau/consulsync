@@ -158,8 +158,6 @@
             };
           };
           config = mkIf cfg.enable {
-            environment.etc."config.toml".source = configFile;
-            environment.etc."kinds".source = kindFiles;
             
             systemd.services.consulsync = {
               description = "Consul sync service";
