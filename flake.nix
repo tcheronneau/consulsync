@@ -70,22 +70,6 @@
               default = self.packages.${system}.consulsync;
               description = "Consulsync package";
             };
-            kinds = mkOption {
-              type = types.listOf (types.submodule {
-                default = [];
-                freeformType = format.type;
-                options = {
-                  name = mkOption {
-                    type = types.str;
-                    description = "Service kind name";
-                  };
-                  content = mkOption {
-                    type = types.str;
-                    description = "Service kind content";
-                  };
-                };
-              });
-            };
             settings = mkOption {
               type = types.submodule {
                 freeformType = format.type;
