@@ -58,6 +58,10 @@
           cfg = config.services.consulsync;
           format = pkgs.formats.toml { };
           configFile = format.generate "config.toml" cfg.settings; 
+          kindFiles = mapAttrsToList (name: kind: ''
+              pkgs.writeText "${name}.toml" kind.content;
+            ''
+          ) cfg.kinds;
         in {
           options.services.consulsync = {
             enable = mkOption {
@@ -69,6 +73,22 @@
               type = types.package;
               default = self.packages.${system}.consulsync;
               description = "Consulsync package";
+            };
+            kinds = mkOption {
+              type = types.listOf (types.submodule {
+                default = [];
+                freeformType = format.type;
+                options = {
+                  name = mkOption {
+                    type = types.str;
+                    description = "Service kind name";
+                  };
+                  content = mkOption {
+                    type = types.str;
+                    description = "Service kind content";
+                  };
+                };
+              });
             };
             settings = mkOption {
               default = {};
@@ -93,6 +113,38 @@
                         };
                       };
                     };
+                  };
+                  service_kinds = mkOption {
+                    type = types.listOf (types.submodule {
+                      default = [];
+                      freeformType = format.type;
+                      options = {
+                        name = mkOption {
+                          type = types.str;
+                          description = "Service kind name";
+                        };
+                        filename = mkOption {
+                          type = types.path;
+                          description = "Service kind filename";
+                        };
+                      };
+                    });
+                  };
+                  kinds = mkOption {
+                    type = types.listOf (types.submodule {
+                      default = [];
+                      freeformType = format.type;
+                      options = {
+                        name = mkOption {
+                          type = types.str;
+                          description = "Kind name";
+                        };
+                        tags = mkOption {
+                          type = types.listOf types.str;
+                          description = "Kind tags";
+                        };
+                      };
+                    });
                   };
                   services = mkOption {
                     type = types.listOf (types.submodule {
@@ -127,6 +179,9 @@
             };
           };
           config = mkIf cfg.enable {
+            environment.etc."config.toml".source = configFile;
+            environment.etc."kinds".source = kindFiles;
+            
             systemd.services.consulsync = {
               description = "Consul sync service";
               after = [ "network.target" ];

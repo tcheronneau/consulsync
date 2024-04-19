@@ -14,13 +14,20 @@ pub struct Config {
     pub consul: Consul,
     pub log_level: Option<String>,
     pub services: Vec<ServiceConfig>,
-    pub service_kinds: Vec<KindConfig>,
+    pub external_kinds: Vec<ExternalKindConfig>,
+    pub kinds: Vec<KindConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct KindConfig {
+pub struct ExternalKindConfig {
     pub name: String,
     pub filename: String,
+}
+#[derive(Debug, Deserialize, Clone)]
+pub struct KindConfig {
+    pub name: String,
+    #[serde(default)]
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Serialize,Deserialize, Clone)]
@@ -137,12 +144,20 @@ fn extract_key_value(input: &str) -> Option<(&str, &str)> {
 
 impl Config {
     fn get_kind_file(&self, kind: &str) -> String { 
-        let kind_config = match self.service_kinds.iter().find(|k| k.name == kind) {
+        let kind_config = match self.external_kinds.iter().find(|k| k.name == kind) {
             Some(kind_config) => kind_config.filename.clone(),
             None => "".to_string(),
         };
         kind_config
     }
+    fn get_kind_tags(&self, kind: &str) -> Vec<String> {
+        let kind_tags = match self.kinds.iter().find(|k| k.name == kind) {
+            Some(kind_config) => kind_config.tags.clone(),
+            None => Vec::new(),
+        };
+        kind_tags
+    }
+
 }
 
 pub fn read(config_file: &PathBuf) -> anyhow::Result<Config> {
@@ -157,14 +172,15 @@ pub fn read(config_file: &PathBuf) -> anyhow::Result<Config> {
     for i in 0..config.services.len() {
         let service = &config.services[i];
         let service_type = &service.kind;
-        //let service_type_config_file = format!("config_{}.toml", service_type);
         let service_type_config_file = config.get_kind_file(service_type); 
+        let service_tags = config.get_kind_tags(service_type);
         info!("Service type is {:?}", service_type_config_file);
         let service_type_config: HashMap<String, serde_yaml::Value> = Figment::new()
             .merge(Toml::file(service_type_config_file))
             .extract()?;
         if let Some(service_config) = config.services.get_mut(i) {
             service_config.merge_from(service_type_config.clone());
+            service_config.update_field("tags".to_string(),service_tags.clone().into());
         }
     }
 
