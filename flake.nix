@@ -93,7 +93,7 @@
                       };
                     };
                   };
-                  service_kinds = mkOption {
+                  external_kinds = mkOption {
                     type = types.listOf (types.submodule {
                       freeformType = format.type;
                       options = {
