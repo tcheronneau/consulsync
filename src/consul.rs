@@ -33,6 +33,7 @@ pub struct AgentServiceResponse {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AgentService {
+    #[serde(default)]
     pub kind: String,
     #[serde(rename = "ID")]
     pub id: String,

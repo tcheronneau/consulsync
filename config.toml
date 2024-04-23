@@ -1,16 +1,15 @@
-log_level = "info"
+log_level = "debug"
 external_kinds = []
-services = []
 
 [consul]
-url = "http://192.168.10.42:8500"
+url = "http://192.168.10.8:8500"
 
-#[[services]]
-#name = "nixconsul"
-#kind = "traefik_authelia"
-#port = 8080
-#address = "127.0.0.1"
-##tags = []
+[[services]]
+name = "nixconsul"
+kind = "traefik_authelia"
+port = 8080
+address = "127.0.0.1"
+#tags = []
 ##
 #[[services]]
 #name = "nixtest"
