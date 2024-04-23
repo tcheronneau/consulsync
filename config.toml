@@ -1,21 +1,22 @@
 log_level = "info"
 external_kinds = []
+services = []
 
 [consul]
 url = "http://192.168.10.42:8500"
 
-[[services]]
-name = "nixconsul"
-kind = "traefik_authelia"
-port = 8080
-address = "127.0.0.1"
-#tags = []
-#
-[[services]]
-name = "nixtest"
-kind = "closed"
-port = 9090
-address = "127.0.0.1"
+#[[services]]
+#name = "nixconsul"
+#kind = "traefik_authelia"
+#port = 8080
+#address = "127.0.0.1"
+##tags = []
+##
+#[[services]]
+#name = "nixtest"
+#kind = "closed"
+#port = 9090
+#address = "127.0.0.1"
 
 #[[service_kinds]]
 #name = "traefik_authelia"

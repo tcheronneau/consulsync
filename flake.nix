@@ -146,6 +146,7 @@
                         tags = mkOption {
                           type = types.listOf types.str;
                           description = "Service tags";
+                          default = [];
                         };
                       };
                     });
