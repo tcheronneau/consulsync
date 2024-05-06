@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 mod consul;
 mod config;
+mod check;
 
 //const CONFIG_FILE: &str = "config.toml";
 

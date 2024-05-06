@@ -7,12 +7,14 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.82"
+async-std = "1.12.0"
 clap = "4.5.4"
 clap-verbosity-flag = "2.2.0"
 consulrs = "0.1.0"
 env_logger = "0.11.3"
 figment = { version = "0.10.16", features = ["toml", "env"] }
 futures = "0.3.30"
+io = "0.0.2"
 log = "0.4.21"
 notify = "6.0.1"
 reqwest = "0.12.3"
