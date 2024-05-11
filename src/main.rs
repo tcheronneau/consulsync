@@ -5,6 +5,7 @@ use std::{time::Duration, thread};
 use notify::{PollWatcher, RecursiveMode, Watcher, Config as NotifyConfig};
 use clap::{arg, command, Parser};
 use std::path::PathBuf;
+use tokio::task;
 
 mod consul;
 mod config;
@@ -90,13 +91,28 @@ async fn main() -> anyhow::Result<()> {
     info!("Config is {:?}", config);
 
     let (tx, rx) = mpsc::channel();
-    check_services(config.clone()).await?;
+    match check_services(config.clone()).await {
+        Ok(_) => (),
+        Err(e) => {
+            error!("Error registering service: {}", e);
+        }
+    }
     thread::spawn(move || {
         if let Err(err) = watch_config_file(&config_file_clone, tx) {
             error!("Error monitoring config file changes: {}", err);
         }
     });
 
+    //let socket_check_task = task::spawn(async move {
+    //    loop {
+    //        for service in &config.services {
+    //            if !service.service_available().await {
+    //                warn!("Service {} is not available", service.name);
+    //            }
+    //        }
+    //        tokio::time::sleep(Duration::from_secs(5)).await;
+    //    }
+    //});
     loop {
         match rx.recv() {
             Ok(_) => {
@@ -110,7 +126,12 @@ async fn main() -> anyhow::Result<()> {
                         config.clone()
                     }
                 };
-                check_services(new_config).await?;
+                match check_services(new_config).await {
+                    Ok(_) => (),
+                    Err(e) => {
+                        error!("Error registering service: {}", e);
+                    }
+                }
             }
             Err(e) => error!("watch error: {:?}", e),
         }

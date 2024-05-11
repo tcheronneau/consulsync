@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 use crate::config::ServiceConfig;
+use crate::check::ExternalCheck;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Service {
@@ -130,6 +131,7 @@ impl From<ServiceConfig> for RegisterAgentService {
     }
 }
 
+
 #[derive(Debug)]
 pub struct ClientError {
     pub message: String,
@@ -202,6 +204,12 @@ impl Consul {
     }
     pub async fn register_agent_service(&self, service: &RegisterAgentService) -> Result<(), ClientError> {
         let url = format!("{}/v1/agent/service/register", self.url);
+        let service_check: ExternalCheck = service.clone().into();
+        if !service_check.service_available().await {
+            return Err(ClientError {
+                message: format!("Service {} is not available", &service.name),
+            });
+        }
         let mut service = service.clone();
         service.tags.push("nixconsul".to_string());
         let body = serde_json::to_string(&service)?;
