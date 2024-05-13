@@ -16,8 +16,11 @@
 
         src = lib.cleanSource ./.;
 
-        cargoSha256 =
-          "sha256-A6s3xdFC4RnIYpQ1BGKuL0Q3WEqlFuKmplGhbDb9VB8=";
+        cargoLock = {
+          lockFile = ./Cargo.lock;
+        };
+        #cargoSha256 =
+        #  "sha256-A6s3xdFC4RnIYpQ1BGKuL0Q3WEqlFuKmplGhbDb9VB8=";
         nativeBuildInputs = [
           rustc
           cargo
