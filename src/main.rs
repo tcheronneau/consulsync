@@ -11,6 +11,9 @@ mod consul;
 mod config;
 mod check;
 
+use consul::RegisterAgentService;
+use crate::check::{RsConsulExt, ExternalCheck};
+
 //const CONFIG_FILE: &str = "config.toml";
 
 #[derive(Parser, Debug)]
@@ -20,7 +23,7 @@ struct Args {
     config: PathBuf,
 }
 
-async fn check_services(config: config::Config) -> anyhow::Result<()> {
+async fn config_services(config: config::Config) -> anyhow::Result<()> {
     let client = consul::Consul::new(&config.consul.url);
     let managed_services = client.get_managed_services().await?;
     let mut uptodate: Vec<String> = Vec::new();
@@ -41,6 +44,51 @@ async fn check_services(config: config::Config) -> anyhow::Result<()> {
     }
     Ok(())
 }
+
+async fn check_services(config: config::Config, sender: mpsc::Sender<()>) -> anyhow::Result<()> {
+    let client = consul::Consul::new(&config.consul.url);
+    let rs_client: rs_consul::Consul = consul::Consul::new(&config.consul.url).into();
+    let unavailable_services = match rs_client.get_unavailable_services().await {
+        Ok(services) => services,
+        Err(_) => {
+            info!("It seems that there is no existing unavailable services");
+            Vec::new()
+        }
+    };
+    for service in &config.services {
+        let register_service: RegisterAgentService = service.clone().into();
+        let service_check: ExternalCheck = register_service.into(); 
+        if !service_check.service_available().await {
+            warn!("Service {} is not available", service.name);
+            match rs_client.register_unavailable_service(&service_check).await {
+                Ok(_) => {
+                    info!("Service registered as unavailable");
+                    warn!("Deregistering service {} since unavailable", service.name);
+                    client.deregister_agent_service(&service.name).await?;
+                },
+                Err(e) => {
+                    warn!("Error registering service as unavailable: {:?}", e);
+                }
+            }
+        } else {
+            debug!("Service {} is available", service.name);
+            sender.send(()).unwrap();
+            if unavailable_services.contains(&service.name) {
+                match rs_client.deregister_unavailable_service(&service_check).await {
+                    Ok(_) => {
+                        info!("Service {} was unavailable, now available", service.name);
+                    },
+                    Err(e) => {
+                        warn!("Error deregistering service as available: {:?}", e);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+ 
 
 fn watch_config_file(
     file_path: &std::path::Path,
@@ -67,6 +115,48 @@ fn watch_config_file(
     }
 }
 
+async fn loop_check_services(config: config::Config, sender: mpsc::Sender<()>) {
+    loop {
+        debug!("Checking services...");
+        match check_services(config.clone(), sender.clone()).await {
+            Ok(_) => (),
+            Err(e) => {
+                error!("Error checking service: {}", e);
+            }
+        }
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        debug!("Checking services...end");
+    }
+}
+
+async fn loop_config_services(mut config: config::Config,config_file: PathBuf, file_rx: mpsc::Receiver<()>) {
+    loop {
+        match file_rx.recv() {
+            Ok(_) => {
+                debug!("Config file changed, syncing...");
+                thread::sleep(Duration::from_secs(1));
+                let new_config = match config::read(&config_file) {
+                    Ok(config) => config,
+                    Err(e) => {
+                        error!("Error reading config file: {}", e);
+                        warn!("Using old config");
+                        config.clone()
+                    }
+                };
+                config = new_config.clone();
+                match config_services(new_config).await {
+                    Ok(_) => (),
+                    Err(e) => {
+                        error!("Error registering service: {}", e);
+                    }
+                }
+            }
+            Err(e) => error!("watch error: {:?}", e),
+        }
+        tokio::time::sleep(Duration::from_secs(15)).await;
+    } 
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
@@ -91,49 +181,29 @@ async fn main() -> anyhow::Result<()> {
     info!("Config is {:?}", config);
 
     let (tx, rx) = mpsc::channel();
-    match check_services(config.clone()).await {
+    match config_services(config.clone()).await {
         Ok(_) => (),
         Err(e) => {
             error!("Error registering service: {}", e);
         }
     }
+    let tx_clone = tx.clone();
     thread::spawn(move || {
         if let Err(err) = watch_config_file(&config_file_clone, tx) {
             error!("Error monitoring config file changes: {}", err);
         }
     });
 
-    //let socket_check_task = task::spawn(async move {
-    //    loop {
-    //        for service in &config.services {
-    //            if !service.service_available().await {
-    //                warn!("Service {} is not available", service.name);
-    //            }
-    //        }
-    //        tokio::time::sleep(Duration::from_secs(5)).await;
-    //    }
-    //});
-    loop {
-        match rx.recv() {
-            Ok(_) => {
-                debug!("Config file changed, syncing...");
-                thread::sleep(Duration::from_secs(1));
-                let new_config = match config::read(&config_file) {
-                    Ok(config) => config,
-                    Err(e) => {
-                        error!("Error reading config file: {}", e);
-                        warn!("Using old config");
-                        config.clone()
-                    }
-                };
-                match check_services(new_config).await {
-                    Ok(_) => (),
-                    Err(e) => {
-                        error!("Error registering service: {}", e);
-                    }
-                }
-            }
-            Err(e) => error!("watch error: {:?}", e),
-        }
+    let config_clone = config.clone();
+    let check_task = task::spawn(async move {
+        loop_check_services(config_clone,tx_clone).await;
+    });
+    let config_task = task::spawn(async move {
+        loop_config_services(config, config_file, rx).await;
+    });
+    tokio::select! {
+        _ = check_task => (),
+        _ = config_task => (),
     }
+    Ok(())
 }

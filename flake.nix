@@ -6,7 +6,7 @@
   outputs = { self, nixpkgs, flake-utils }:
   let
     name = "consulsync";
-    version = "0.1.0";
+    version = "0.2.0";
   in
   flake-utils.lib.eachDefaultSystem (system:
     with nixpkgs.legacyPackages.${system}; {

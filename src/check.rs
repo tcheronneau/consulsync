@@ -4,6 +4,8 @@ use crate::consul::RegisterAgentService;
 use crate::consul::Consul;
 use rs_consul::Consul as RsConsul;
 use bytes::Bytes;
+use std::time::Duration;
+use gethostname::gethostname;
 
 #[derive(Debug)]
 pub struct ExternalCheck {
@@ -48,18 +50,24 @@ impl From<Consul> for RsConsul {
         rs_consul::Consul::new(config)
     }
 }
-trait RsConsulExt {
+pub trait RsConsulExt {
     async fn register_unavailable_service(&self, check: &ExternalCheck) -> anyhow::Result<()>;
+    async fn deregister_unavailable_service(&self, check: &ExternalCheck) -> anyhow::Result<()>;
+    async fn get_unavailable_services(&self) -> anyhow::Result<Vec<String>>;
 }
 
 impl RsConsulExt for RsConsul {
     async fn register_unavailable_service(&self, check: &ExternalCheck) -> anyhow::Result<()> {
-        let key = format!("consulsync/{}", check.name);
+        let hostname = match gethostname().into_string() {
+            Ok(h) => h,
+            Err(_) => "unknown".to_string(),
+        };
+        let key = format!("consulsync/{}/{}", hostname, check.name);
         let value = Bytes::from("unavailable");
         let req = rs_consul::types::CreateOrUpdateKeyRequest {
             key: key.as_str(),
             namespace: "",
-            datacenter: "mcth",
+            datacenter: "",
             flags: 0,
             check_and_set: None,
             release: "",
@@ -72,5 +80,50 @@ impl RsConsulExt for RsConsul {
                 Ok(())
             }
         }
+    }
+    async fn deregister_unavailable_service(&self, check: &ExternalCheck) -> anyhow::Result<()> {
+        let hostname = match gethostname().into_string() {
+            Ok(h) => h,
+            Err(_) => "unknown".to_string(),
+        };
+        let key = format!("consulsync/{}/{}", hostname, check.name);
+        let req = rs_consul::types::DeleteKeyRequest {
+            key: key.as_str(),
+            namespace: "",
+            datacenter: "",
+            recurse: false,
+            check_and_set: 0,
+        };
+        match self.delete_key(req).await {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                info!("Error deregistering service: {}", e);
+                Ok(())
+            }
+        }
+    }
+    async fn get_unavailable_services(&self) -> anyhow::Result<Vec<String>> {
+        let hostname = match gethostname().into_string() {
+            Ok(h) => h,
+            Err(_) => "unknown".to_string(),
+        };
+        let key = format!("consulsync/{}", hostname);
+        let req = rs_consul::types::ReadKeyRequest {
+            key: key.as_str(),
+            namespace: "",
+            datacenter: "",
+            recurse: true,
+            separator: "",
+            index: None,
+            consistency: rs_consul::ConsistencyMode::Default,
+            wait: Duration::from_secs(1),
+        };
+        let resp = self.read_key(req).await?;
+        let unavailable_services: Vec<String> = resp.iter().filter_map(|r| {
+            let parts: Vec<&str> = r.key.split('/').collect();
+            Some(parts[parts.len()-1].to_string())
+        }).collect();
+        info!("Unavailable services: {:?}", unavailable_services);
+        Ok(unavailable_services)
     }
 }
